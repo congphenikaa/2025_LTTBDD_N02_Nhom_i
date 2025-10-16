@@ -1,4 +1,5 @@
 import 'package:app_nghenhac/common/helpers/firebase_storage_service.dart';
+import 'package:app_nghenhac/core/services/google_sign_in_service.dart';
 import 'package:app_nghenhac/data/repository/auth/auth_repository_impl.dart';
 import 'package:app_nghenhac/data/repository/search/search_repository_impl.dart';
 import 'package:app_nghenhac/data/repository/song/song_repository_impl.dart';
@@ -39,6 +40,9 @@ Future<void> initializeDependencies() async {
   // Firebase
   sl.registerSingleton<FirebaseFirestore>(FirebaseFirestore.instance);
   sl.registerSingleton<FirebaseAuth>(FirebaseAuth.instance);
+
+  // Google Sign-In Service
+  sl.registerSingleton<GoogleSignInService>(GoogleSignInService());
 
   // Data sources
   sl.registerSingleton<AuthFirebaseService>(

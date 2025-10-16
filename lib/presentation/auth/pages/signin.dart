@@ -1,6 +1,7 @@
 import 'package:app_nghenhac/common/widgets/appbar/app_bar.dart';
 import 'package:app_nghenhac/common/widgets/button/basic_app_button.dart';
 import 'package:app_nghenhac/core/configs/assets/app_vectors.dart';
+import 'package:app_nghenhac/core/services/google_sign_in_service.dart';
 import 'package:app_nghenhac/data/models/auth/signin_user_req.dart';
 import 'package:app_nghenhac/domain/usecases/auth/signin.dart';
 import 'package:app_nghenhac/presentation/auth/pages/signup.dart';
@@ -18,9 +19,10 @@ class SigninPage extends StatefulWidget {
 
 class _SigninPageState extends State<SigninPage> {
   final TextEditingController _email = TextEditingController();
-
   final TextEditingController _password = TextEditingController();
+  final GoogleSignInService _googleSignInService = sl<GoogleSignInService>();
   bool _obscurePassword = true;
+  bool _isGoogleLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -71,6 +73,10 @@ class _SigninPageState extends State<SigninPage> {
                 }, 
                 title: 'Sign In'
               ),
+              SizedBox(height: 20,),
+              _orDivider(),
+              SizedBox(height: 20,),
+              _googleSignInButton(),
             ],
           ),
         )
@@ -118,6 +124,104 @@ class _SigninPageState extends State<SigninPage> {
         Theme.of(context).inputDecorationTheme
       ),
     );
+  }
+
+  Widget _orDivider() {
+    return Row(
+      children: [
+        Expanded(
+          child: Divider(
+            thickness: 1,
+            color: Colors.grey[300],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'OR',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Divider(
+            thickness: 1,
+            color: Colors.grey[300],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _googleSignInButton() {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      child: OutlinedButton.icon(
+        onPressed: _isGoogleLoading ? null : _signInWithGoogle,
+        icon: _isGoogleLoading
+            ? SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : SvgPicture.asset(
+                'assets/vectors/google_logo.svg',
+                height: 20,
+                width: 20,
+              ),
+        label: Text(
+          _isGoogleLoading ? 'Đang đăng nhập...' : 'Đăng nhập với Google',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: Colors.grey[300]!),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isGoogleLoading = true);
+    
+    try {
+      final userCredential = await _googleSignInService.signInWithGoogle();
+      if (userCredential != null) {
+        // Đăng nhập thành công, chuyển về trang chính
+        Navigator.pushAndRemoveUntil(
+          context, 
+          MaterialPageRoute(builder: (BuildContext context) => HomePage()), 
+          (route) => false
+        );
+      } else {
+        // Người dùng hủy đăng nhập
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đăng nhập bị hủy'), 
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi đăng nhập Google: $e'), 
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isGoogleLoading = false);
+      }
+    }
   }
 
 
