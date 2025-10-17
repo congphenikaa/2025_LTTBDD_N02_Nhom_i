@@ -8,6 +8,7 @@ class ArtistModel {
   final String nameLowercase; // Thêm field này
   final String? bio;
   final String? imageUrl;
+  final String? imageStoragePath; // Thêm field storage path
   final List<String>? genres;
   final int? followers;
   final bool isFollowed;
@@ -17,6 +18,7 @@ class ArtistModel {
     required this.name,
     this.bio,
     this.imageUrl,
+    this.imageStoragePath,
     this.genres,
     this.followers,
     this.isFollowed = false,
@@ -28,6 +30,7 @@ class ArtistModel {
       name: json['name'] ?? '',
       bio: json['bio'],
       imageUrl: json['image_url'],
+      imageStoragePath: json['image_storage_path'],
       genres: json['genres'] != null 
           ? List<String>.from(json['genres'])
           : null,
@@ -43,10 +46,33 @@ class ArtistModel {
       'name_lowercase': nameLowercase, // Thêm vào JSON
       'bio': bio,
       'image_url': imageUrl,
+      'image_storage_path': imageStoragePath,
       'genres': genres,
       'followers': followers,
       'is_followed': isFollowed,
     };
+  }
+
+  ArtistModel copyWith({
+    String? id,
+    String? name,
+    String? bio,
+    String? imageUrl,
+    String? imageStoragePath,
+    List<String>? genres,
+    int? followers,
+    bool? isFollowed,
+  }) {
+    return ArtistModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      bio: bio ?? this.bio,
+      imageUrl: imageUrl ?? this.imageUrl,
+      imageStoragePath: imageStoragePath ?? this.imageStoragePath,
+      genres: genres ?? this.genres,
+      followers: followers ?? this.followers,
+      isFollowed: isFollowed ?? this.isFollowed,
+    );
   }
 
   ArtistEntity toEntity() {
@@ -55,6 +81,7 @@ class ArtistModel {
       name: name,
       bio: bio,
       imageUrl: imageUrl,
+      imageStoragePath: imageStoragePath,
       genres: genres,
       followers: followers,
       isFollowed: isFollowed,

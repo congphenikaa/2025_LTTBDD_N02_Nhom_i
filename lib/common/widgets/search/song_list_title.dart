@@ -60,12 +60,21 @@ class SongListTitle extends StatelessWidget {
       child: song.coverUrl != null
           ? ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                song.coverUrl!,
-                width: 50,
-                height: 50,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _buildDefaultCover(),
+              child: Builder(
+                builder: (context) {
+                  print('🖼️ Loading cover URL: ${song.coverUrl}');
+                  return Image.network(
+                    song.coverUrl!,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      print('❌ Error loading cover URL: ${song.coverUrl}');
+                      print('❌ Error: $error');
+                      return _buildDefaultCover();
+                    },
+                  );
+                }
               ),
             )
           : _buildDefaultCover(),

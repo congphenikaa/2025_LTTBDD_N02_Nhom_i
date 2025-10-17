@@ -7,6 +7,7 @@ class PlaylistModel extends Equatable {
   final String? nameLowercase;
   final String? description;
   final String? coverUrl;
+  final String? coverStoragePath;
   final String? creatorId;
   final String? creatorName;
   final int? trackCount;
@@ -21,6 +22,7 @@ class PlaylistModel extends Equatable {
     this.nameLowercase,
     this.description,
     this.coverUrl,
+    this.coverStoragePath,
     this.creatorId,
     this.creatorName,
     this.trackCount,
@@ -37,6 +39,7 @@ class PlaylistModel extends Equatable {
       nameLowercase: json['name_lowercase'],
       description: json['description'],
       coverUrl: json['cover_url'],
+      coverStoragePath: json['cover_storage_path'],
       creatorId: json['creator_id'],
       creatorName: json['creator_name'], 
       trackCount: _parseTrackCount(json['track_count']), // ✅ Safe parsing
@@ -66,12 +69,46 @@ class PlaylistModel extends Equatable {
     }
     return null;
   }
+
+  PlaylistModel copyWith({
+    String? id,
+    String? name,
+    String? nameLowercase,
+    String? description,
+    String? coverUrl,
+    String? coverStoragePath,
+    String? creatorId,
+    String? creatorName,
+    int? trackCount,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isPublic,
+    bool? isOwned,
+  }) {
+    return PlaylistModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      nameLowercase: nameLowercase ?? this.nameLowercase,
+      description: description ?? this.description,
+      coverUrl: coverUrl ?? this.coverUrl,
+      coverStoragePath: coverStoragePath ?? this.coverStoragePath,
+      creatorId: creatorId ?? this.creatorId,
+      creatorName: creatorName ?? this.creatorName,
+      trackCount: trackCount ?? this.trackCount,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isPublic: isPublic ?? this.isPublic,
+      isOwned: isOwned ?? this.isOwned,
+    );
+  }
+
   PlaylistEntity toEntity() {
     return PlaylistEntity(
       id: id,
       name: name,
       description: description,
       coverUrl: coverUrl,
+      coverStoragePath: coverStoragePath,
       creatorId: creatorId,
       creatorName: creatorName,
       trackCount: trackCount,
@@ -84,7 +121,7 @@ class PlaylistModel extends Equatable {
 
   @override
   List<Object?> get props => [
-    id, name, nameLowercase, description, coverUrl, 
+    id, name, nameLowercase, description, coverUrl, coverStoragePath,
     creatorId, creatorName, trackCount, createdAt, updatedAt, isPublic, isOwned
   ];
 }

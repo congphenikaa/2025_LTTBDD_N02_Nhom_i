@@ -148,10 +148,19 @@ class PlaylistCard extends StatelessWidget {
         child: playlist.coverUrl != null
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  playlist.coverUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => _buildDefaultCover(),
+                child: Builder(
+                  builder: (context) {
+                    print('🎵 Playlist Cover URL: ${playlist.coverUrl}');
+                    return Image.network(
+                      playlist.coverUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        print('❌ Error loading playlist cover: ${playlist.coverUrl}');
+                        print('❌ Error: $error');
+                        return _buildDefaultCover();
+                      },
+                    );
+                  }
                 ),
               )
             : _buildDefaultCover(),

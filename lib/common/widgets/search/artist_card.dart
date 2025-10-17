@@ -20,35 +20,56 @@ class ArtistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = isHorizontal ? null : _calculateCardWidth(screenWidth);
+    
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        width: isHorizontal ? null : 140,
-        padding: const EdgeInsets.all(12),
+        width: cardWidth,
+        constraints: BoxConstraints(
+          minHeight: isHorizontal ? 80 : 120,
+          maxHeight: isHorizontal ? 100 : 200,
+        ),
+        padding: EdgeInsets.all(isHorizontal ? 12 : 8),
         child: isHorizontal ? _buildHorizontalLayout(context) : _buildVerticalLayout(context),
       ),
     );
   }
+  
+  double _calculateCardWidth(double screenWidth) {
+    // Responsive width calculation
+    if (screenWidth < 360) {
+      return 120; // Small screens
+    } else if (screenWidth < 600) {
+      return 140; // Medium screens
+    } else {
+      return 160; // Large screens
+    }
+  }
 
   Widget _buildVerticalLayout(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         // Artist Image
-        _buildArtistImage(),
-        const SizedBox(height: 12),
+        _buildArtistImage(context),
+        const SizedBox(height: 8),
         
         // Artist Name
-        Text(
-          artist.name,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: context.isDarkMode ? Colors.white : Colors.black,
+        Flexible(
+          child: Text(
+            artist.name,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: context.isDarkMode ? Colors.white : Colors.black,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 4),
         
@@ -57,101 +78,135 @@ class ArtistCard extends StatelessWidget {
           Text(
             '${_formatFollowers(artist.followers!)} followers',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: context.isDarkMode ? Colors.grey[400] : Colors.grey[600],
             ),
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
         ],
         
         // Follow Button
-        if (onFollowPressed != null) _buildFollowButton(context),
+        if (onFollowPressed != null) 
+          Flexible(child: _buildFollowButton(context)),
       ],
     );
   }
 
   Widget _buildHorizontalLayout(BuildContext context) {
-    return Row(
-      children: [
-        // Artist Image
-        SizedBox(
-          width: 60,
-          height: 60,
-          child: _buildArtistImage(),
-        ),
-        const SizedBox(width: 12),
-        
-        // Artist Info
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                artist.name,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: context.isDarkMode ? Colors.white : Colors.black,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              
-              if (artist.followers != null)
+    return IntrinsicHeight(
+      child: Row(
+        children: [
+          // Artist Image
+          SizedBox(
+            width: 60,
+            height: 60,
+            child: _buildArtistImage(context),
+          ),
+          const SizedBox(width: 12),
+          
+          // Artist Info
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
                 Text(
-                  '${_formatFollowers(artist.followers!)} followers',
+                  artist.name,
                   style: TextStyle(
-                    fontSize: 14,
-                    color: context.isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: context.isDarkMode ? Colors.white : Colors.black,
                   ),
-                ),
-              
-              if (artist.genres != null && artist.genres!.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  artist.genres!.take(2).join(', '),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: context.isDarkMode ? Colors.grey[500] : Colors.grey[500],
-                  ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 4),
+                
+                if (artist.followers != null)
+                  Text(
+                    '${_formatFollowers(artist.followers!)} followers',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: context.isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                
+                if (artist.genres != null && artist.genres!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    artist.genres!.take(2).join(', '),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: context.isDarkMode ? Colors.grey[500] : Colors.grey[500],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        
-        // Follow Button
-        if (onFollowPressed != null) _buildFollowButton(context),
-      ],
+          
+          const SizedBox(width: 8),
+          
+          // Follow Button
+          if (onFollowPressed != null) 
+            Flexible(
+              flex: 1,
+              child: _buildFollowButton(context),
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildArtistImage() {
+  Widget _buildArtistImage(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    double radius;
+    
+    if (isHorizontal) {
+      radius = 30;
+    } else {
+      // Responsive radius for vertical layout
+      if (screenWidth < 360) {
+        radius = 35;
+      } else if (screenWidth < 600) {
+        radius = 45;
+      } else {
+        radius = 50;
+      }
+    }
+    
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: CircleAvatar(
-        radius: isHorizontal ? 30 : 50,
+        radius: radius,
         backgroundColor: Colors.grey[300],
         backgroundImage: artist.imageUrl != null
-            ? NetworkImage(artist.imageUrl!)
+            ? (() {
+                print('👤 Artist Image URL: ${artist.imageUrl}');
+                return NetworkImage(artist.imageUrl!);
+              })()
             : null,
         child: artist.imageUrl == null
             ? Icon(
                 Icons.person,
-                size: isHorizontal ? 30 : 50,
+                size: radius * 0.8,
                 color: Colors.grey[600],
               )
             : null,
@@ -160,26 +215,42 @@ class ArtistCard extends StatelessWidget {
   }
 
   Widget _buildFollowButton(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    
     return Container(
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: isHorizontal ? 36 : 32,
+      constraints: BoxConstraints(
+        minWidth: isSmallScreen ? 60 : 80,
+        maxWidth: isHorizontal ? 100 : 120,
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 8 : 12,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
         color: artist.isFollowed ? Colors.transparent : AppColors.primary,
         border: Border.all(
           color: AppColors.primary,
           width: 1,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: InkWell(
         onTap: onFollowPressed,
+        borderRadius: BorderRadius.circular(18),
         child: Center(
-          child: Text(
-            artist.isFollowed ? 'Following' : 'Follow',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: artist.isFollowed ? AppColors.primary : Colors.white,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              artist.isFollowed ? 'Following' : 'Follow',
+              style: TextStyle(
+                fontSize: isSmallScreen ? 10 : 12,
+                fontWeight: FontWeight.w600,
+                color: artist.isFollowed ? AppColors.primary : Colors.white,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),
@@ -194,5 +265,19 @@ class ArtistCard extends StatelessWidget {
       return '${(followers / 1000).toStringAsFixed(1)}K';
     }
     return followers.toString();
+  }
+  
+  // Helper methods for responsive design
+  bool _isSmallScreen(BuildContext context) {
+    return MediaQuery.of(context).size.width < 360;
+  }
+  
+  bool _isMediumScreen(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    return width >= 360 && width < 600;
+  }
+  
+  bool _isLargeScreen(BuildContext context) {
+    return MediaQuery.of(context).size.width >= 600;
   }
 }

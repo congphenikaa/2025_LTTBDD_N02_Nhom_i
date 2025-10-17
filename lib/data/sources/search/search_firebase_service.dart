@@ -122,14 +122,20 @@ class SearchFirebaseServiceImpl extends SearchFirebaseService {
       // Update songs with URLs
       final List<SongModel> updatedSongs = [];
       for (final song in songs) {
-        updatedSongs.add(song.copyWith(
+        final newSong = song.copyWith(
           coverUrl: song.coverStoragePath != null 
               ? urlMap[song.coverStoragePath!] 
               : null,
           audioUrl: song.audioStoragePath != null 
               ? urlMap[song.audioStoragePath!] 
               : null,
-        ));
+        );
+        
+        print('🎵 Song: ${song.title}');
+        print('🗂️ Storage path: ${song.coverStoragePath}');
+        print('🔗 Loaded URL: ${newSong.coverUrl}');
+        
+        updatedSongs.add(newSong);
       }
       
       print('✅ URLs loaded successfully');
@@ -142,6 +148,8 @@ class SearchFirebaseServiceImpl extends SearchFirebaseService {
 
   Future<List<ArtistModel>> _searchArtists(String query) async {
     try {
+      print('👤 Searching artists with query: "$query"');
+      
       final querySnapshot = await _firestore
           .collection('artists')
           .where('name_lowercase', isGreaterThanOrEqualTo: query)
@@ -149,65 +157,306 @@ class SearchFirebaseServiceImpl extends SearchFirebaseService {
           .limit(10)
           .get();
 
-      return querySnapshot.docs.map((doc) => ArtistModel.fromJson({
+      final List<ArtistModel> artistsWithoutUrls = querySnapshot.docs.map((doc) => ArtistModel.fromJson({
         'id': doc.id,
         ...doc.data(),
       })).toList();
+
+      // Load URLs for all artists
+      final artistsWithUrls = await _loadUrlsForArtists(artistsWithoutUrls);
+      
+      print('👤 Final artists count: ${artistsWithUrls.length}');
+      return artistsWithUrls;
     } catch (e) {
-      print('Error searching artists: ${e.toString()}');
+      print('❌ Error searching artists: ${e.toString()}');
       return [];
     }
   }
 
-  Future<List<AlbumModel>> _searchAlbums(String query) async {
-  try {
-    print('🎵 Searching albums with query: "$query"');
+  Future<List<ArtistModel>> _loadUrlsForArtists(List<ArtistModel> artists) async {
+    print('👤 _loadUrlsForArtists called with ${artists.length} artists');
     
-    // Search by album title
-    final titleQuery = await _firestore
-        .collection('albums')
-        .where('title_lowercase', isGreaterThanOrEqualTo: query)
-        .where('title_lowercase', isLessThan: query + '\uf8ff')
-        .limit(10)
-        .get();
-
-    // Search by artist name
-    final artistQuery = await _firestore
-        .collection('albums')
-        .where('artist_lowercase', isGreaterThanOrEqualTo: query)
-        .where('artist_lowercase', isLessThan: query + '\uf8ff')
-        .limit(10)
-        .get();
-
-    // Combine and remove duplicates
-    final Set<String> seenIds = {};
-    final List<AlbumModel> albums = [];
-
-    for (final doc in [...titleQuery.docs, ...artistQuery.docs]) {
-      if (!seenIds.contains(doc.id)) {
-        seenIds.add(doc.id);
-        try {
-          final albumData = {
-            'id': doc.id,
-            ...doc.data(),
-          };
-          albums.add(AlbumModel.fromJson(albumData));
-          print('✅ Successfully created AlbumModel for: ${albumData['title']}');
-        } catch (e) {
-          print('❌ Error creating AlbumModel: $e');
-          print('❌ Raw album data: ${doc.data()}');
-          // Continue với albums khác thay vì crash
+    if (artists.isEmpty) {
+      print('👤 No artists to load URLs for');
+      return artists;
+    }
+    
+    try {
+      final storageService = sl<FirebaseStorageService>();
+      
+      // Collect all image storage paths
+      final List<String> imagePaths = [];
+      for (final artist in artists) {
+        print('👤 Artist: ${artist.name}');
+        print('👤 Image storage path: ${artist.imageStoragePath}');
+        print('👤 Image URL: ${artist.imageUrl}');
+        
+        // Check if imageStoragePath has the storage path
+        if (artist.imageStoragePath != null && artist.imageStoragePath!.isNotEmpty) {
+          imagePaths.add(artist.imageStoragePath!);
+        }
+        // If imageStoragePath is null/empty, check if imageUrl contains a storage path (not a download URL)
+        else if (artist.imageUrl != null && 
+                 artist.imageUrl!.isNotEmpty && 
+                 !artist.imageUrl!.startsWith('http') && 
+                 !artist.imageUrl!.startsWith('https')) {
+          print('👤 Using imageUrl as storage path: ${artist.imageUrl}');
+          imagePaths.add(artist.imageUrl!);
         }
       }
-    }
+      
+      if (imagePaths.isEmpty) {
+        print('👤 No image paths found for artists');
+        return artists;
+      }
 
-    print('🎵 Final albums count: ${albums.length}');
-    return albums;
-  } catch (e) {
-    print('❌ Error searching albums: $e');
-    return [];
+      print('📁 Loading ${imagePaths.length} artist image URLs...');
+      
+      // Get all URLs at once
+      final urlMap = await storageService.getDownloadUrls(imagePaths);
+      
+      print('📁 Artist URL map result: $urlMap');
+      
+      // Update artists with URLs
+      final List<ArtistModel> updatedArtists = [];
+      for (final artist in artists) {
+        String? storagePath;
+        
+        // Determine which field contains the storage path
+        if (artist.imageStoragePath != null && artist.imageStoragePath!.isNotEmpty) {
+          storagePath = artist.imageStoragePath!;
+        } else if (artist.imageUrl != null && 
+                   artist.imageUrl!.isNotEmpty && 
+                   !artist.imageUrl!.startsWith('http') && 
+                   !artist.imageUrl!.startsWith('https')) {
+          storagePath = artist.imageUrl!;
+        }
+        
+        final updatedArtist = artist.copyWith(
+          imageUrl: storagePath != null ? urlMap[storagePath] : null,
+        );
+        
+        print('👤 Updated artist: ${artist.name}');
+        print('👤 Original imageUrl: ${artist.imageUrl}');
+        print('👤 New imageUrl: ${updatedArtist.imageUrl}');
+        
+        updatedArtists.add(updatedArtist);
+      }
+      
+      print('✅ Artist image URLs loaded successfully');
+      return updatedArtists;
+    } catch (e) {
+      print('❌ Error loading artist URLs: $e');
+      return artists; // Return without URLs if error
+    }
+  }  Future<List<AlbumModel>> _searchAlbums(String query) async {
+    try {
+      print('💿 Searching albums with query: "$query"');
+      
+      // Search by album title
+      final titleQuery = await _firestore
+          .collection('albums')
+          .where('title_lowercase', isGreaterThanOrEqualTo: query)
+          .where('title_lowercase', isLessThan: query + '\uf8ff')
+          .limit(10)
+          .get();
+
+      // Search by artist name
+      final artistQuery = await _firestore
+          .collection('albums')
+          .where('artist_lowercase', isGreaterThanOrEqualTo: query)
+          .where('artist_lowercase', isLessThan: query + '\uf8ff')
+          .limit(10)
+          .get();
+
+      // Combine and remove duplicates
+      final Set<String> seenIds = {};
+      final List<AlbumModel> albumsWithoutUrls = [];
+
+      for (final doc in [...titleQuery.docs, ...artistQuery.docs]) {
+        if (!seenIds.contains(doc.id)) {
+          seenIds.add(doc.id);
+          try {
+            final albumData = {
+              'id': doc.id,
+              ...doc.data(),
+            };
+            albumsWithoutUrls.add(AlbumModel.fromJson(albumData));
+            print('✅ Successfully created AlbumModel for: ${albumData['title']}');
+          } catch (e) {
+            print('❌ Error creating AlbumModel: $e');
+            print('❌ Raw album data: ${doc.data()}');
+            // Continue với albums khác thay vì crash
+          }
+        }
+      }
+
+      // Load URLs for all albums
+      final albumsWithUrls = await _loadUrlsForAlbums(albumsWithoutUrls);
+
+      print('💿 Final albums count: ${albumsWithUrls.length}');
+      return albumsWithUrls;
+    } catch (e) {
+      print('❌ Error searching albums: $e');
+      return [];
+    }
   }
-}
+
+  Future<List<AlbumModel>> _loadUrlsForAlbums(List<AlbumModel> albums) async {
+    print('💿 _loadUrlsForAlbums called with ${albums.length} albums');
+    
+    if (albums.isEmpty) {
+      print('💿 No albums to load URLs for');
+      return albums;
+    }
+    
+    try {
+      final storageService = sl<FirebaseStorageService>();
+      
+      // Collect all cover storage paths
+      final List<String> coverPaths = [];
+      for (final album in albums) {
+        print('💿 Album: ${album.title}');
+        print('💿 Cover storage path: ${album.coverStoragePath}');
+        print('💿 Cover URL: ${album.coverUrl}');
+        
+        // Check if coverStoragePath has the storage path
+        if (album.coverStoragePath != null && album.coverStoragePath!.isNotEmpty) {
+          coverPaths.add(album.coverStoragePath!);
+        }
+        // If coverStoragePath is null/empty, check if coverUrl contains a storage path (not a download URL)
+        else if (album.coverUrl != null && 
+                 album.coverUrl!.isNotEmpty && 
+                 !album.coverUrl!.startsWith('http') && 
+                 !album.coverUrl!.startsWith('https')) {
+          print('💿 Using coverUrl as storage path: ${album.coverUrl}');
+          coverPaths.add(album.coverUrl!);
+        }
+      }
+      
+      if (coverPaths.isEmpty) {
+        print('💿 No cover paths found for albums');
+        return albums;
+      }
+      
+      print('📁 Loading ${coverPaths.length} album cover URLs...');
+      
+      // Get all URLs at once
+      final urlMap = await storageService.getDownloadUrls(coverPaths);
+      
+      print('📁 Album URL map result: $urlMap');
+      
+      // Update albums with URLs
+      final List<AlbumModel> updatedAlbums = [];
+      for (final album in albums) {
+        String? storagePath;
+        
+        // Determine which field contains the storage path
+        if (album.coverStoragePath != null && album.coverStoragePath!.isNotEmpty) {
+          storagePath = album.coverStoragePath!;
+        } else if (album.coverUrl != null && 
+                   album.coverUrl!.isNotEmpty && 
+                   !album.coverUrl!.startsWith('http') && 
+                   !album.coverUrl!.startsWith('https')) {
+          storagePath = album.coverUrl!;
+        }
+        
+        final updatedAlbum = album.copyWith(
+          coverUrl: storagePath != null ? urlMap[storagePath] : null,
+        );
+        
+        print('💿 Updated album: ${album.title}');
+        print('💿 Original coverUrl: ${album.coverUrl}');
+        print('💿 New coverUrl: ${updatedAlbum.coverUrl}');
+        
+        updatedAlbums.add(updatedAlbum);
+      }
+      
+      print('✅ Album cover URLs loaded successfully');
+      return updatedAlbums;
+    } catch (e) {
+      print('❌ Error loading album URLs: $e');
+      return albums; // Return without URLs if error
+    }
+  }
+
+  Future<List<PlaylistModel>> _loadUrlsForPlaylists(List<PlaylistModel> playlists) async {
+    print('🎵 _loadUrlsForPlaylists called with ${playlists.length} playlists');
+    
+    if (playlists.isEmpty) {
+      print('🎵 No playlists to load URLs for');
+      return playlists;
+    }
+    
+    try {
+      final storageService = sl<FirebaseStorageService>();
+      
+      // Collect all cover storage paths
+      final List<String> coverPaths = [];
+      for (final playlist in playlists) {
+        print('🎵 Playlist: ${playlist.name}');
+        print('🎵 Cover storage path: ${playlist.coverStoragePath}');
+        print('🎵 Cover URL: ${playlist.coverUrl}');
+        
+        // Check if coverStoragePath has the storage path
+        if (playlist.coverStoragePath != null && playlist.coverStoragePath!.isNotEmpty) {
+          coverPaths.add(playlist.coverStoragePath!);
+        }
+        // If coverStoragePath is null/empty, check if coverUrl contains a storage path (not a download URL)
+        else if (playlist.coverUrl != null && 
+                 playlist.coverUrl!.isNotEmpty && 
+                 !playlist.coverUrl!.startsWith('http') && 
+                 !playlist.coverUrl!.startsWith('https')) {
+          print('🎵 Using coverUrl as storage path: ${playlist.coverUrl}');
+          coverPaths.add(playlist.coverUrl!);
+        }
+      }
+      
+      if (coverPaths.isEmpty) {
+        print('🎵 No cover paths found for playlists');
+        return playlists;
+      }
+      
+      print('📁 Loading ${coverPaths.length} playlist cover URLs...');
+      
+      // Get all URLs at once
+      final urlMap = await storageService.getDownloadUrls(coverPaths);
+      
+      print('📁 URL map result: $urlMap');
+      
+      // Update playlists with URLs
+      final List<PlaylistModel> updatedPlaylists = [];
+      for (final playlist in playlists) {
+        String? storagePath;
+        
+        // Determine which field contains the storage path
+        if (playlist.coverStoragePath != null && playlist.coverStoragePath!.isNotEmpty) {
+          storagePath = playlist.coverStoragePath!;
+        } else if (playlist.coverUrl != null && 
+                   playlist.coverUrl!.isNotEmpty && 
+                   !playlist.coverUrl!.startsWith('http') && 
+                   !playlist.coverUrl!.startsWith('https')) {
+          storagePath = playlist.coverUrl!;
+        }
+        
+        final updatedPlaylist = playlist.copyWith(
+          coverUrl: storagePath != null ? urlMap[storagePath] : null,
+        );
+        
+        print('🎵 Updated playlist: ${playlist.name}');
+        print('🎵 Original coverUrl: ${playlist.coverUrl}');
+        print('🎵 New coverUrl: ${updatedPlaylist.coverUrl}');
+        
+        updatedPlaylists.add(updatedPlaylist);
+      }
+      
+      print('✅ Playlist cover URLs loaded successfully');
+      return updatedPlaylists;
+    } catch (e) {
+      print('❌ Error loading playlist URLs: $e');
+      return playlists; // Return without URLs if error
+    }
+  }
 
 Future<List<PlaylistModel>> _searchPlaylists(String query) async {
   try {
@@ -253,8 +502,11 @@ Future<List<PlaylistModel>> _searchPlaylists(String query) async {
       }
     }
 
-    print('🎵 Final playlists count: ${playlists.length}');
-    return playlists;
+    // Load URLs for all playlists
+    final playlistsWithUrls = await _loadUrlsForPlaylists(playlists);
+
+    print('🎵 Final playlists count: ${playlistsWithUrls.length}');
+    return playlistsWithUrls;
   } catch (e) {
     print('❌ Error searching playlists: $e');
     return [];

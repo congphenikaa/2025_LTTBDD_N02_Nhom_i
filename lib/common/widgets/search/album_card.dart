@@ -227,12 +227,21 @@ class AlbumCard extends StatelessWidget {
       child: album.coverUrl != null
           ? ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                album.coverUrl!,
-                width: double.infinity,
-                height: coverHeight,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _buildDefaultCover(context),
+              child: Builder(
+                builder: (context) {
+                  print('💿 Album Cover URL: ${album.coverUrl}');
+                  return Image.network(
+                    album.coverUrl!,
+                    width: double.infinity,
+                    height: coverHeight,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      print('❌ Error loading album cover: ${album.coverUrl}');
+                      print('❌ Error: $error');
+                      return _buildDefaultCover(context);
+                    },
+                  );
+                }
               ),
             )
           : _buildDefaultCover(context),

@@ -3,6 +3,7 @@ class ArtistEntity {
   final String name;
   final String? bio;
   final String? imageUrl;
+  final String? imageStoragePath;
   final List<String>? genres;
   final int? followers;
   final bool isFollowed;
@@ -12,6 +13,7 @@ class ArtistEntity {
     required this.name,
     this.bio,
     this.imageUrl,
+    this.imageStoragePath,
     this.genres,
     this.followers,
     this.isFollowed = false,

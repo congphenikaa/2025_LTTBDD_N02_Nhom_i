@@ -4,6 +4,7 @@ class AlbumEntity {
   final String artist;
   final String? artistId;
   final String? coverUrl;
+  final String? coverStoragePath;
   final DateTime? releaseDate;
   final int? trackCount;
   final List<String>? genres;
@@ -15,6 +16,7 @@ class AlbumEntity {
     required this.artist,
     this.artistId,
     this.coverUrl,
+    this.coverStoragePath,
     this.releaseDate,
     this.trackCount,
     this.genres,
