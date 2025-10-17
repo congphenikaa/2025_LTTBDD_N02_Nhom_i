@@ -168,7 +168,7 @@ class _SigninPageState extends State<SigninPage> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : SvgPicture.asset(
-                'assets/vectors/google_logo.svg',
+                AppVectors.google_logo,
                 height: 20,
                 width: 20,
               ),
